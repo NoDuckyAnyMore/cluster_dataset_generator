@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+
+# Downloaded OSM data and derived caches (regenerate locally)
+offline_osm_cache_*/
+osm_randomized_height_*/
+*.osm
+*.osm.pbf
+
+# Generated datasets, simulation results, and previews
+project985_*/
+shenzhen_campus_sionna_*/
+data/
+datasets/
+outputs/
+results/
+sionna_results*/
+rss_maps_128px/
+generated_scene*/
+scenes/
+meshes/
+*.npy
+*.npz
+*.partial
+*.partial.*
+*.checkpoint.json
+
+# Scheduler and runtime artifacts
+slurm-*.out
+generation*.log
+generation_worker_*.log
+*.lock
+*.tmp

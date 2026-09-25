@@ -1,0 +1,13 @@
+# Universities already completed and verified on the standalone RTX 5090 server.
+# One region_slug per line. Inline comments are allowed.
+# Verified snapshot: 2026-09-04; 224 blocks across 9 complete universities.
+
+pku_main       # 北京大学, 22/22 blocks
+tsinghua_main  # 清华大学, 65/65 blocks
+ruc            # 中国人民大学, 18/18 blocks
+buaa           # 北京航空航天大学, 27/27 blocks
+bit            # 北京理工大学, 12/12 blocks
+cau            # 中国农业大学, 15/15 blocks
+bnu            # 北京师范大学, 16/16 blocks
+minzu          # 中央民族大学, 11/11 blocks
+jlu            # 吉林大学, 38/38 blocks
