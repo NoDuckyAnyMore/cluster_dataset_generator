@@ -65,7 +65,9 @@ cluster_usage --no-du
 - 中断后重新提交同一个任务，已完成 block 会跳过，未完成 block 从 batch checkpoint 续跑
 - 每个block只有一个worker能持有锁；进程退出时锁自动释放，其他worker可从checkpoint接手
 - 计算节点不联网；39 所 985 主校区的原始及随机高度 OSM 已随目录打包
-- 默认结果目录：`~/vast/UAV_RM/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32`
+- 默认 RX 种子：`20261002`；默认计算全部 1,436 个区块，不启用外部跳过名单
+- 默认结果目录：`~/vast/UAV_RM/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002`
+- 原有 OSM 缓存及建筑高度版本（种子 `20260921`）继续使用；新批次只重新采样地面 RX
 - 每个 RX 独立保存为一个 float32 `[40,128,128]` NPY；后续增加 RX 数量时只计算新增 RX
 - 默认关闭逐层 PNG 预览，避免在 JuiceFS HDD 上创建几十万个小文件；需要时可在 RT 完成后独立绘制
 - 默认按估算建筑三角面数从少到多领取 block（`simple_first`），先运行简单场景；排序只影响领取顺序，不影响结果或 checkpoint
@@ -100,8 +102,9 @@ RID_TX_BATCH_SIZE=50 sbatch --array=0-0%1 submit_4090.slurm
 ## 跳过已在其他服务器完成的学校
 
 `completed_regions_skip.txt` 记录已经在独立 5090 服务器完整计算并核验的
-`region_slug`。每个集群 worker 启动时都会读取同一份清单，并在领取 block
-之前排除这些学校。当前清单包含 9 所整校完成的大学，共跳过 224 个 block；
+旧批次 `region_slug`。新 RX 种子批次默认不读取此清单，全部重新计算。
+只有显式设置 `RID_SKIP_FILE=/path/to/batch_skip.txt` 时，worker 才读取指定清单，
+并在领取 block 之前排除这些学校。旧清单包含 9 所整校完成的大学，共 224 个 block；
 南开和同济没有整校完成，因此不在清单中。
 
 清单只控制集群是否计算，不会凭空复制结果。最终合并数据集时，仍需把这些
@@ -159,7 +162,7 @@ z_m = 2 + iz * 2
 ```text
 ~/vast/UAV_RM/
 ├── cluster_dataset_generator/
-└── project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32/
+└── project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002/
 ```
 
 如果需要改变根目录，在提交时设置：
@@ -183,8 +186,8 @@ ls -ld .
 `dr-xr-xr-x`。如果数据集目录已经存在，也要保证它可写：
 
 ```bash
-mkdir -p "$HOME/vast/UAV_RM/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32"
-chmod -R u+rwX "$HOME/vast/UAV_RM/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32"
+mkdir -p "$HOME/vast/UAV_RM/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002"
+chmod -R u+rwX "$HOME/vast/UAV_RM/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002"
 ```
 
 ## 提交和续跑
@@ -251,7 +254,7 @@ watch -n 30 python show_dataset_progress.py
 ```
 
 这里的 `External skip blocks` 是已在其他服务器完成、由
-`completed_regions_skip.txt` 排除的任务；`Cluster complete` 是当前集群数据
+显式设置的 `RID_SKIP_FILE` 排除的任务（默认没有）；`Cluster complete` 是当前集群数据
 目录中通过完整 metadata、index 和 10 个 RX NPY 检查的 block；两者共同计入
 `Task progress`。
 
@@ -271,6 +274,15 @@ scontrol show job 作业号_数组序号
 ```
 
 ## 改变worker/GPU数量
+
+本次新 RX 批次使用 8 张 RTX 5090，无需修改 Slurm 文件：
+
+```bash
+RID_RANDOM_SEED=20261002 RID_SKIP_FILE= sbatch --array=0-7%8 submit_5090.slurm
+```
+
+后续更换 RX 种子仍可通过 `RID_RANDOM_SEED` 指定，结果目录自动加 `_rxseed<种子>`。
+建筑高度缓存与 RX 种子独立，继续复用现有缓存。
 
 只修改 `submit_5090.slurm` 的数组范围，不修改Python。例如默认4个单卡worker：
 

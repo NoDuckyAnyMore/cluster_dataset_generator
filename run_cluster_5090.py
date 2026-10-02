@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import gc
 import hashlib
+import json
 import os
 import shutil
 import signal
@@ -29,10 +30,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BASE_ROOT = Path(
     os.environ.get("RID_CLUSTER_ROOT", str(Path.home() / "vast" / "UAV_RM"))
 ).expanduser().resolve()
-DATASET_NAME = "project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32"
+# This seed changes RX placement; the existing building-height cache stays fixed.
+RANDOM_SEED = int(os.environ.get("RID_RANDOM_SEED", "20261002"))
+DATASET_NAME = os.environ.get(
+    "RID_DATASET_NAME",
+    f"project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed{RANDOM_SEED}",
+)
 DATASET_ROOT = BASE_ROOT / DATASET_NAME
 
-RANDOM_SEED = 20260921
 RX_COUNT = 10
 # Missing receivers are solved in groups to retain Sionna's multi-RX speedup.
 # Changing this only changes VRAM/throughput; existing per-RX shards stay valid.
@@ -73,7 +78,11 @@ AUDITOR = SCRIPT_DIR / "audit_campus_sionna_dataset.py"
 OPTIX_CHECKER = SCRIPT_DIR / "check_gpu_rt.py"
 BASE_OFFLINE_OSM_CACHE = SCRIPT_DIR / "offline_osm_cache_985_256m"
 RANDOMIZED_OSM_CACHE = SCRIPT_DIR / "osm_randomized_height_985_256m_u10_32"
-COMPLETED_REGIONS_SKIP_FILE = SCRIPT_DIR / "completed_regions_skip.txt"
+# A new seed needs every campus recomputed. External skips are opt-in only.
+COMPLETED_REGIONS_SKIP_FILE = (
+    Path(os.environ["RID_SKIP_FILE"]).expanduser().resolve()
+    if os.environ.get("RID_SKIP_FILE") else None
+)
 
 
 @dataclass(frozen=True)
@@ -336,6 +345,14 @@ def ensure_dataset_ready() -> None:
     """Let the first arriving worker install assets; later workers wait/skip."""
     lock = acquire_file_lock(DATASET_ROOT / ".dataset_prepare.lock", blocking=True)
     try:
+        metadata_path = DATASET_ROOT / "dataset_metadata.json"
+        if metadata_path.is_file():
+            existing = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if (
+                existing.get("simulation_defaults", {}).get("random_seed_global") != RANDOM_SEED
+                or existing.get("osm_height_variant") != OSM_HEIGHT_VARIANT
+            ):
+                raise RuntimeError("Dataset already belongs to another seed/variant; choose a new RID_DATASET_NAME")
         manifest_source = BASE_OFFLINE_OSM_CACHE / "blocks_manifest.csv"
         signature = ":".join([
             sha256_file(manifest_source),
@@ -489,6 +506,9 @@ def load_block_tasks() -> list[BlockTask]:
 def load_completed_region_skips(valid_region_slugs: set[str]) -> set[str]:
     """Load externally completed campuses that this cluster must not claim."""
     path = COMPLETED_REGIONS_SKIP_FILE
+    if path is None:
+        print("External campus skips disabled; all manifest blocks will be computed.")
+        return set()
     if not path.is_file():
         print(f"Completed-region skip file not found; no campuses skipped: {path}")
         return set()

@@ -21,8 +21,8 @@ def load_tasks(dataset_root: Path) -> list[cluster.BlockTask]:
         ]
 
 
-def load_skipped_regions(path: Path) -> set[str]:
-    if not path.is_file():
+def load_skipped_regions(path: Path | None) -> set[str]:
+    if path is None or not path.is_file():
         return set()
     return {
         line.partition("#")[0].strip()
@@ -48,7 +48,9 @@ def main() -> int:
     # upload: block_is_complete() reads this module-level path.
     cluster.DATASET_ROOT = dataset_root
     tasks = load_tasks(dataset_root)
-    skipped_regions = load_skipped_regions(args.skip_file.expanduser().resolve())
+    skipped_regions = load_skipped_regions(
+        args.skip_file.expanduser().resolve() if args.skip_file else None
+    )
     skipped_tasks = [task for task in tasks if task.region_slug in skipped_regions]
     cluster_tasks = [task for task in tasks if task.region_slug not in skipped_regions]
 

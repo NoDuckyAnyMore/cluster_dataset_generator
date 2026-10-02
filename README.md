@@ -41,6 +41,23 @@ python randomize_missing_osm_heights.py \
 
 默认结果根目录为 `~/vast/UAV_RM`，可通过 `RID_CLUSTER_ROOT` 覆盖。
 
+2026-10-02 新批次只更新地面 RX 位置：默认 `RID_RANDOM_SEED=20261002`，继续使用原有
+`osm_randomized_height_985_256m_u10_32` 缓存及其建筑高度种子 `20260921`。
+结果目录自动加上 `_rxseed20261002`，默认计算全部 39 所高校、1,436 个区块，不使用旧跳过名单。
+缓存已在集群时，无需重新运行上面的缓存准备命令。
+
+提交 8 个 RTX 5090 单卡 worker：
+
+```bash
+RID_RANDOM_SEED=20261002 RID_SKIP_FILE= sbatch --array=0-7%8 submit_5090.slurm
+```
+
+以后只需修改 `RID_RANDOM_SEED` 就会自动选择对应 RX 种子的独立结果目录。
+`RID_DATASET_NAME` 可自定义目录名，`RID_SKIP_FILE` 可显式启用某批次专用的外部完成名单。
+根目录 `dataset_metadata.json` 的 `simulation_defaults.random_seed_global` 和各区块
+`metadata.json` 的 `random_seed_global`、`random_seed_derived` 记录 RX 种子；
+`osm_height_variant` 单独记录沿用的建筑高度版本。
+
 ```bash
 # RTX 5090
 sbatch submit_5090.slurm
@@ -63,7 +80,7 @@ sbatch submit_5090.slurm
 ```bash
 python show_dataset_progress.py --by-region
 python audit_campus_sionna_dataset.py --quick \
-  --dataset-root "$RID_CLUSTER_ROOT/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32"
+  --dataset-root "${RID_CLUSTER_ROOT:-$HOME/vast/UAV_RM}/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002"
 ```
 
 运行不依赖 GPU 的单元测试：
