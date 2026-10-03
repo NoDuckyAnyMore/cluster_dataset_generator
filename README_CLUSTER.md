@@ -76,7 +76,7 @@ cluster_usage --no-du
 
 `run_cluster_5090.py` 现在是两种GPU共用的长期worker。GPU型号和worker数量由Slurm提交脚本决定，科学参数、动态block锁及NPY格式保持一致：
 
-- `submit_5090.slurm`：分区 `gpu_5090`，默认 `TX_BATCH_SIZE=120`。
+- `submit_5090.slurm`：分区 `gpu_5090`，默认 `TX_BATCH_SIZE=110`。
 - `submit_4090.slurm`：分区 `gpu_4090`，默认 `TX_BATCH_SIZE=60`。
 - 两种作业可同时运行并领取同一数据集。batch大小不是物理结果签名的一部分，因此一个block可由4090从5090的checkpoint续跑，反向也一样。
 
@@ -238,19 +238,19 @@ parajobs
 Sionna，也不需要 GPU）：
 
 ```bash
-python show_dataset_progress.py
+python3 show_dataset_progress.py
 ```
 
 按学校展开：
 
 ```bash
-python show_dataset_progress.py --by-region
+python3 show_dataset_progress.py --by-region
 ```
 
 每 30 秒自动刷新：
 
 ```bash
-watch -n 30 python show_dataset_progress.py
+watch -n 30 python3 show_dataset_progress.py
 ```
 
 这里的 `External skip blocks` 是已在其他服务器完成、由
@@ -324,19 +324,20 @@ worker 后续领取到对应 block 时从原偏移继续。
 
 ## 改变仿真参数或扩容RX
 
-这些设置只在 `run_cluster_5090.py` 顶部修改，不写进Slurm文件：
+RX 设置在 `run_cluster_5090.py` 顶部修改；TX batch 默认 110，也可通过提交环境变量
+`RID_TX_BATCH_SIZE` 覆盖，无需修改 Slurm 文件：
 
 ```python
 RX_COUNT = 10
 RX_SOLVER_GROUP_SIZE = 10
-TX_BATCH_SIZE = 120
+TX_BATCH_SIZE = 110
 ```
 
 例如把 `RX_COUNT` 从10改成16后重新提交，前10个RX位置和结果不变，只补算 `rx_010.npy` 至 `rx_015.npy`。修改RX目标前先取消仍在运行的旧worker，避免两套目标同时操作同一数据集。
 
 求解组大小不是物理参数，不会让已完成分片失效。但一个尚未完成的 RX 组若改变组大小，该组的临时 checkpoint 不能复用；已提交的 RX 分片仍会保留。
 
-`TX_BATCH_SIZE` 也不是数据定义的一部分。当前 batch 为 120；改变它后，已经
+`TX_BATCH_SIZE` 也不是数据定义的一部分。当前 batch 为 110；改变它后，已经
 由 checkpoint 确认的体素不会重算，下一批从记录的展平位置继续，最终 NPY
 与使用哪种 batch 切分无关。`SAMPLES_PER_TX` 和 `MAX_DEPTH` 是仿真物理/精度
 设置，不应为了显存问题随意更改，否则会产生口径不同的数据。
@@ -365,9 +366,9 @@ jit_malloc(): out of memory! Could not allocate 2147483648 bytes of device memor
 赋值号右侧，因此新旧两个大型路径缓冲短暂同时驻留显存。代码现已在每批开始
 前以及 `finally` 中显式释放 `paths/a/tau/gains/powers`，包括异常路径。
 
-当前使用 `TX_BATCH_SIZE=120`、`SAMPLES_PER_TX=10000`、`MAX_DEPTH=3`
+当前使用 `TX_BATCH_SIZE=110`、`SAMPLES_PER_TX=10000`、`MAX_DEPTH=3`
 等仿真口径。若上传本版本后仍发生真实 OOM，才把 `run_cluster_5090.py` 的
-`TX_BATCH_SIZE` 逐步降到 120、100；现有 batch checkpoint 可以继续使用。
+`TX_BATCH_SIZE` 进一步降到 100；现有 batch checkpoint 可以继续使用。
 
 ### 多个worker同时启动时报OptiX磁盘缓存数据库错误
 

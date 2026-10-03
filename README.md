@@ -78,7 +78,7 @@ sbatch submit_5090.slurm
 查看进度与执行快速审计：
 
 ```bash
-python show_dataset_progress.py --by-region
+python3 show_dataset_progress.py --by-region
 python audit_campus_sionna_dataset.py --quick \
   --dataset-root "${RID_CLUSTER_ROOT:-$HOME/vast/UAV_RM}/project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002"
 ```

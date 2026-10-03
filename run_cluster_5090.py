@@ -47,10 +47,10 @@ RX_BUILDING_CLEARANCE_M = 5.0
 VOXEL_SIZE_M = 2.0
 VOXEL_NX, VOXEL_NY, VOXEL_NZ = 128, 128, 40
 VOXEL_Z_START_M = 2.0
-# Runtime-only setting: 5090 keeps the default 120, while submit_4090.slurm
+# Runtime-only setting: 5090 keeps the default 110, while submit_4090.slurm
 # exports RID_TX_BATCH_SIZE=60. Checkpoints store absolute TX offsets and are
 # deliberately compatible across batch-size changes and GPU models.
-TX_BATCH_SIZE = int(os.environ.get("RID_TX_BATCH_SIZE", "120"))
+TX_BATCH_SIZE = int(os.environ.get("RID_TX_BATCH_SIZE", "110"))
 SAMPLES_PER_TX = 10_000
 MAX_DEPTH = 3
 RENDER_PREVIEW_AFTER_BLOCK = False
