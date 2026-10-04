@@ -10,15 +10,24 @@ vast_path="${UAV_VAST_DIR:-$HOME/vast}"
 rate5090="${UAV_RATE_5090:-2.70}"
 rate4090="${UAV_RATE_4090:-2.16}"
 scan_du=1
+query_storage=1
 
 usage() {
     printf '%s\n' \
-        '用法: cluster_usage [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--no-du]' \
+        '用法: cluster_usage [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--gpu-only] [--no-du]' \
         '      bash cluster_usage.sh --install' \
         '默认查询当前用户的全部可用记账历史，结束时间不包含在统计区间内。' \
+        '默认显示 GPU 卡时、费用和 VAST 空间用量。' \
+        '参数:' \
+        '  --since YYYY-MM-DD  统计开始时间（包含）。' \
+        '  --until YYYY-MM-DD  统计结束时间（不包含，默认当前时间）。' \
+        '  --gpu-only         只查询 GPU 卡时和费用，跳过所有空间查询（df、quota、du）。' \
+        '  --no-du            只跳过较慢的目录扫描，仍然查询 df 和 quota。' \
+        '  --install          安装 cluster_usage shell 命令。' \
+        '  -h, --help         显示此帮助。' \
+        '示例: cluster_usage --gpu-only --since 2026-09-01' \
         '环境变量: UAV_USAGE_START, UAV_VAST_DIR, UAV_RATE_5090, UAV_RATE_4090,' \
-        '          UAV_USAGE_TZ（默认北京时间）, UAV_USAGE_RC（安装目标 rc 文件）。' \
-        '--no-du 跳过较慢的目录扫描，仍然查询 df 和 quota。'
+        '          UAV_USAGE_TZ（默认北京时间）, UAV_USAGE_RC（安装目标 rc 文件）。'
 }
 
 install_command() {
@@ -48,6 +57,7 @@ while (($#)); do
             if [[ $1 == --since ]]; then since=$2; else until=$2; fi
             shift 2 ;;
         --no-du) scan_du=0; shift ;;
+        --gpu-only) query_storage=0; shift ;;
         --install) install_command; exit 0 ;;
         -h|--help) usage; exit 0 ;;
         *) printf '未知参数: %s\n' "$1" >&2; usage >&2; exit 2 ;;
@@ -187,5 +197,7 @@ report_vast() {
 
 status=0
 report_gpu || status=1
-report_vast || status=1
+if ((query_storage)); then
+    report_vast || status=1
+fi
 exit "$status"

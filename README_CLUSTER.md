@@ -37,16 +37,21 @@ GPU 作业或执行权限（通过 `bash` 调用）。脚本无持久日志，�
 - 对运行秒数与起止跨度不同的记录（例如暂停），按有效运行秒数比例分摊到各日并提示。
   `sacct` 汇总无法提供暂停的具体日期，因此这类记录的每日费用只是估算。
 - 其他 GPU 型号计入 `Other(h)` 和总卡时，但没有价格，不会假装计入其费用。
-- VAST 依次显示 `df -hT`、`quota -s`、`du -sh`。共享文件系统的剩余量、个人配额、
+- 默认 VAST 依次显示 `df -hT`、`quota -s`、`du -sh`。使用 `--gpu-only` 可跳过全部空间查询，
+  只统计 GPU 卡时和费用；`--no-du` 只跳过目录扫描，仍查询 `df` 和 `quota`。共享文件系统的剩余量、个人配额、
   个人目录大小是三个不同指标。未设置存储单价，因此这里不估算存储费用。
-- Slurm 查询超时/失败时明确显示未知，不输出零费用冒充成功；仍会继续查询存储。
+- Slurm 查询超时/失败时明确显示未知，不输出零费用冒充成功；默认仍会继续查询存储，
+  `--gpu-only` 模式不会查询存储。
 
 可选用法（结束时间为不包含的上界）：
 
 ```bash
 cluster_usage --since 2026-09-01
 cluster_usage --since 2026-09-01 --until 2026-10-01
+cluster_usage --gpu-only
+cluster_usage --gpu-only --since 2026-09-01
 cluster_usage --no-du
+cluster_usage --help
 ```
 
 可在 shell 配置中设置 `UAV_USAGE_START` 改默认起始日期，`UAV_VAST_DIR` 改 VAST 目录

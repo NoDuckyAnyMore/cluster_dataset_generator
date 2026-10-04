@@ -90,6 +90,36 @@ class ClusterUsageTests(unittest.TestCase):
         self.assertIn("MOCK_DF", r.stdout)
         self.assertNotIn("TOTAL", r.stdout)
 
+    def test_gpu_only_skips_all_storage_queries_and_keeps_costs(self):
+        rows = [record(1, "gpu_5090", "2026-09-01T00:00:00", "2026-09-01T02:00:00",
+                       7200, "gres/gpu=2")]
+        for options in [("--gpu-only",), ("--gpu-only", "--no-du"),
+                        ("--no-du", "--gpu-only")]:
+            with self.subTest(options=options):
+                r = self.run_report(rows, "--since", "2026-09-01", "--until", "2026-09-03", *options)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(self.values(r, "TOTAL"), [4, 0, 0, 4, 10.8, 0, 10.8])
+                for marker in ["MOCK_DF", "MOCK_QUOTA", "MOCK_DU", "VAST 用量"]:
+                    self.assertNotIn(marker, r.stdout)
+
+    def test_gpu_only_failure_does_not_query_storage_or_claim_zero_total(self):
+        r = self.run_report([], "--until", "2026-09-03", "--gpu-only", FAKE_FAILURE="1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Slurm 查询失败", r.stderr)
+        for marker in ["MOCK_DF", "MOCK_QUOTA", "MOCK_DU", "VAST 用量", "TOTAL"]:
+            self.assertNotIn(marker, r.stdout)
+
+    def test_help_describes_gpu_only_without_querying_usage(self):
+        for option in ["--help", "-h"]:
+            with self.subTest(option=option):
+                r = self.run_report([], option, FAKE_FAILURE="1")
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn("--gpu-only", r.stdout)
+                self.assertIn("跳过所有空间查询", r.stdout)
+                self.assertIn("-h, --help", r.stdout)
+                for marker in ["查询 Slurm", "MOCK_DF", "MOCK_QUOTA", "MOCK_DU"]:
+                    self.assertNotIn(marker, r.stdout)
+
     def test_no_usage(self):
         r = self.run_report([], "--until", "2026-09-03")
         self.assertEqual(r.returncode, 0, r.stderr)
