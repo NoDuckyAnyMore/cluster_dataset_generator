@@ -480,3 +480,58 @@ RID_CONDA_ENV=你的环境名 sbatch submit_5090.slurm
 ```
 
 主程序是 `run_cluster_5090.py`，但不要在登录节点直接执行它；必须通过 `sbatch` 进入计算节点。
+
+## 使用 7-Zip 分卷导出数据集
+
+首次安装时，在可以联网的登录节点创建独立的 `archive_tools` 环境。Conda 包名是
+`7zip`，本教程使用的可执行命令是 `7zz`。安装命令只在本次操作中指定官方
+conda-forge 源，不修改全局频道配置。
+
+```bash
+module load miniforge3/26.3.2-3
+source "$(conda info --base)/etc/profile.d/conda.sh"
+
+(
+  unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
+  conda create -n archive_tools --override-channels \
+    -c https://conda.anaconda.org/conda-forge \
+    7zip -y
+)
+
+conda activate archive_tools
+7zz i
+```
+
+这里用子 shell 临时清除代理环境变量，处理安装时连接旧代理超时的情况；当前终端
+原有的代理设置会保留。本次已在集群成功安装。阿里云的
+`https://mirrors.aliyun.com/anaconda/cloud/conda-forge` 频道返回 404，不用于安装。
+若依然连接代理超时，可用 `conda config --show proxy_servers` 检查 Conda 配置中的
+代理；若直连也不可用，则需要从本机上传离线安装包。
+
+环境已安装时，无需再次创建。以下命令压缩 20261002 RX 批次，使用 **2 个压缩线程**、
+**每卷 8 GiB**，把分卷放进独立的 `export_20261006` 文件夹：
+
+```bash
+module load miniforge3/26.3.2-3
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate archive_tools
+
+cd ~/vast/UAV_RM
+mkdir -p export_20261006
+
+dataset_name="project985_39_main_voxel_256m_128x128x40_rxexpand_float32_rand10to32_rxseed20261002"
+7zz a -t7z -m0=lzma2 -mx=1 -mmt=2 -v8g \
+  "export_20261006/${dataset_name}.7z" "$dataset_name"
+```
+
+`-mx=1` 使用快速压缩，`-mmt=2` 设置压缩线程数，`-v8g` 设置分卷大小。
+生成文件名为 `${dataset_name}.7z.001`、`.002` 等，最后一卷可能小于 8 GiB。
+导出另一批数据时，修改 `dataset_name` 和导出文件夹，使用新的归档文件名。
+
+下载时需保留所有分卷，并放在同一个目录。测试及解压均指定第一卷；以下示例解压到
+独立的 `restore_20261006` 文件夹：
+
+```bash
+7zz t "export_20261006/${dataset_name}.7z.001"
+7zz x "export_20261006/${dataset_name}.7z.001" -o./restore_20261006
+```

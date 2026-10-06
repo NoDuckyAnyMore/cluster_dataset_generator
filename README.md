@@ -91,6 +91,13 @@ python -m unittest discover -s tests -v
 
 更完整的集群配置、恢复流程、结果格式和审计说明见 [README_CLUSTER.md](README_CLUSTER.md) 与 [CAMPUS_SIONNA_DATASET_REQUIREMENTS.md](CAMPUS_SIONNA_DATASET_REQUIREMENTS.md)。
 
+## 分卷导出数据集
+
+使用独立的 Conda 环境 `archive_tools` 安装 `7zip`，运行命令为 `7zz`。
+20261002 RX 批次使用 2 个压缩线程、每卷 8 GiB，保存到 `~/vast/UAV_RM/export_20261006`。
+安装、代理超时处理、压缩及解压命令见
+[集群 7-Zip 分卷导出教程](README_CLUSTER.md#使用-7-zip-分卷导出数据集)。
+
 ## 数据说明
 
 仓库只发布生成代码和文档，不发布下载的 OSM 缓存、卫星图、仿真张量、checkpoint 或集群日志。使用或再分发 OpenStreetMap 派生数据时，请遵守 ODbL 并保留 OpenStreetMap contributors 署名。
